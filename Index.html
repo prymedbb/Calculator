@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G Calculator</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f2f2f2;
+        }
+
+        .app {
+            max-width: 500px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+        }
+
+        h1, h2 {
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            margin-top: 7px;
+            font-size: 18px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            margin-top: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+        }
+
+        .calculate {
+            background: #222;
+            color: white;
+        }
+
+        .delete {
+            background: #ddd;
+        }
+
+        .entry {
+            background: #eee;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 10px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .entry.selected {
+            border: 3px solid #222;
+            background: #ddd;
+        }
+
+        .entry-number {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .result {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .selection-total {
+            background: #222;
+            color: white;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="app" id="app">
+
+    <h1>G Calculator</h1>
+
+    <label>Total Gross</label>
+
+    <input
+        type="number"
+        id="gross"
+        inputmode="decimal"
+        step="any"
+        placeholder="Enter total gross"
+    >
+
+    <label>Net Win</label>
+
+    <input
+        type="number"
+        id="net"
+        inputmode="decimal"
+        step="any"
+        placeholder="Enter net win"
+    >
+
+    <button class="calculate" onclick="calculate()">
+        CALCULATE
+    </button>
+
+    <div class="result" id="result">
+        G = 0.00
+    </div>
+
+    <div id="selectionControls" class="hidden">
+
+        <button class="delete" onclick="deleteSelected()">
+            DELETE SELECTED
+        </button>
+
+    </div>
+
+    <div id="selectionTotal" class="selection-total hidden">
+        Selected Total: 0.00
+    </div>
+
+    <h2>Saved Entries</h2>
+
+    <div id="entries"></div>
+
+</div>
+
+
+<script>
+
+let selectedEntries = new Set();
+
+
+// ======================================
+// CALCULATE + AUTO SAVE
+// ======================================
+
+function calculate() {
+
+    let grossInput =
+        document.getElementById("gross");
+
+    let netInput =
+        document.getElementById("net");
+
+
+    if (
+        grossInput.value === "" ||
+        netInput.value === ""
+    ) {
+
+        alert("Please enter both numbers.");
+
+        return;
+    }
+
+
+    let gross = Number(grossInput.value);
+
+    let net = Number(netInput.value);
+
+
+    let x = gross * 0.03;
+
+    let y = gross * 0.67;
+
+    let d = y - net;
+
+    let b = d * 0.02;
+
+    let g = b + x;
+
+
+    // Truncate, DON'T round
+    g = Math.trunc(g * 100) / 100;
+
+
+    document.getElementById("result").innerText =
+        "G = " + g.toFixed(2);
+
+
+    let entries =
+        JSON.parse(localStorage.getItem("gEntries")) || [];
+
+
+    entries.push({
+
+        gross: grossInput.value,
+
+        net: netInput.value,
+
+        g: g.toFixed(2)
+
+    });
+
+
+    localStorage.setItem(
+        "gEntries",
+        JSON.stringify(entries)
+    );
+
+
+    displayEntries();
+
+
+    // Prepare for next entry
+    grossInput.value = "";
+
+    netInput.value = "";
+
+    grossInput.focus();
+
+}
+
+
+// ======================================
+// DISPLAY ENTRIES
+// ======================================
+
+function displayEntries() {
+
+    let entries =
+        JSON.parse(localStorage.getItem("gEntries")) || [];
+
+
+    let container =
+        document.getElementById("entries");
+
+
+    container.innerHTML = "";
+
+
+    entries.forEach(function(entry, index) {
+
+        let div =
+            document.createElement("div");
+
+
+        div.className = "entry";
+
+        div.dataset.index = index;
+
+
+        div.innerHTML = `
+
+            <div class="entry-number">
+                Entry ${index + 1}
+            </div>
+
+            Total Gross: ${entry.gross}<br>
+
+            Net Win: ${entry.net}<br>
+
+            <strong>G = ${entry.g}</strong>
+
+        `;
+
+
+        // ======================================
+        // LONG PRESS
+        // ======================================
+
+        let pressTimer;
+
+
+        div.addEventListener(
+            "touchstart",
+            function() {
+
+                pressTimer = setTimeout(
+                    function() {
+
+                        selectEntry(index);
+
+                    },
+                    600
+                );
+
+            }
+        );
+
+
+        div.addEventListener(
+            "touchend",
+            function() {
+
+                clearTimeout(pressTimer);
+
+            }
+        );
+
+
+        div.addEventListener(
+            "touchmove",
+            function() {
+
+                clearTimeout(pressTimer);
+
+            }
+        );
+
+
+        // ======================================
+        // TAP ENTRY
+        // ======================================
+
+        div.addEventListener(
+            "click",
+            function(event) {
+
+                event.stopPropagation();
+
+
+                if (selectedEntries.size > 0) {
+
+                    selectEntry(index);
+
+                }
+
+            }
+        );
+
+
+        container.appendChild(div);
+
+    });
+
+
+    updateSelection();
+
+}
+
+
+// ======================================
+// SELECT / DESELECT
+// ======================================
+
+function selectEntry(index) {
+
+    if (selectedEntries.has(index)) {
+
+        selectedEntries.delete(index);
+
+    } else {
+
+        selectedEntries.add(index);
+
+    }
+
+
+    updateSelection();
+
+}
+
+
+// ======================================
+// UPDATE SELECTION DISPLAY
+// ======================================
+
+function updateSelection() {
+
+    let entries =
+        document.querySelectorAll(".entry");
+
+
+    entries.forEach(function(entry) {
+
+        let index =
+            Number(entry.dataset.index);
+
+
+        if (selectedEntries.has(index)) {
+
+            entry.classList.add("selected");
+
+        } else {
+
+            entry.classList.remove("selected");
+
+        }
+
+    });
+
+
+    updateSelectionTotal();
+
+}
+
+
+// ======================================
+// CALCULATE SELECTED TOTAL
+// ======================================
+
+function updateSelectionTotal() {
+
+    let entries =
+        JSON.parse(localStorage.getItem("gEntries")) || [];
+
+
+    let total = 0;
+
+
+    selectedEntries.forEach(function(index) {
+
+        if (entries[index]) {
+
+            total += Number(entries[index].g);
+
+        }
+
+    });
+
+
+    // Truncate selected total
+    total = Math.trunc(total * 100) / 100;
+
+
+    let totalBox =
+        document.getElementById("selectionTotal");
+
+
+    let controls =
+        document.getElementById("selectionControls");
+
+
+    if (selectedEntries.size === 0) {
+
+        totalBox.classList.add("hidden");
+
+        controls.classList.add("hidden");
+
+    } else {
+
+        totalBox.classList.remove("hidden");
+
+        controls.classList.remove("hidden");
+
+
+        totalBox.innerText =
+            "Selected Total: " +
+            total.toFixed(2);
+
+    }
+
+}
+
+
+// ======================================
+// DELETE SELECTED
+// ======================================
+
+function deleteSelected() {
+
+    if (selectedEntries.size === 0) {
+
+        return;
+
+    }
+
+
+    let entries =
+        JSON.parse(localStorage.getItem("gEntries")) || [];
+
+
+    // Delete from largest index first
+    let indexes =
+        Array.from(selectedEntries)
+        .sort(function(a, b) {
+            return b - a;
+        });
+
+
+    indexes.forEach(function(index) {
+
+        entries.splice(index, 1);
+
+    });
+
+
+    localStorage.setItem(
+        "gEntries",
+        JSON.stringify(entries)
+    );
+
+
+    selectedEntries.clear();
+
+
+    displayEntries();
+
+}
+
+
+// ======================================
+// TAP EMPTY SPACE → CLEAR SELECTION
+// ======================================
+
+document.addEventListener(
+    "click",
+    function(event) {
+
+        let clickedEntry =
+            event.target.closest(".entry");
+
+
+        let clickedDelete =
+            event.target.closest(".delete");
+
+
+        if (
+            !clickedEntry &&
+            !clickedDelete &&
+            selectedEntries.size > 0
+        ) {
+
+            selectedEntries.clear();
+
+            updateSelection();
+
+        }
+
+    }
+);
+
+
+// ======================================
+// LOAD SAVED ENTRIES
+// ======================================
+
+displayEntries();
+
+</script>
+
+</body>
+</html>
